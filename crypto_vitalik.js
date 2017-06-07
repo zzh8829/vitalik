@@ -1,9 +1,11 @@
 require('dotenv').config()
 const login = require("facebook-chat-api");
 const request = require('request');
+var rateLimit = require('function-rate-limit');
 
-BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/'
-BOT_CALL = '@crypbro '
+BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/';
+BOT_CALL = '@crypbro ';
+API_RATE_LIMIT = 6000;
 
 function idempotent(value, symbol) { return value; }
 function hash_prefix(value, symbol) { return '#' + value; }
@@ -66,6 +68,31 @@ function parseCall(message) {
   return parsed;
 }
 
+var sendRequest = rateLimit(1, API_RATE_LIMIT, function(
+    currency, command, api, message
+  ) {
+  // Get the price and message it back.
+  request(BASE_URL, function (error, response, body) {
+    var response = JSON.parse(body);
+    var prices = {};
+    var foundCoin = false;
+    for(var item in response) {
+      if(response[item]['symbol'].toLowerCase() === currency ||
+          response[item]['name'].toLowerCase() === currency) {
+        symbol = response[item]['symbol']
+          value = parseFloat(response[item][command]);
+        value = parseFloat(value.toFixed(2)).toLocaleString();
+        value = VALID_COMMANDS[command](value, symbol);
+        api.sendMessage(value, message.threadID);
+        foundCoin = true;
+      }
+    }
+    if(!foundCoin) {
+      api.sendMessage('Invalid command.', message.threadID);
+    }
+  });
+});
+
 credentials = { email: process.env.EMAIL, password: process.env.PASSWORD }
 login(credentials, (err, api) => {
   if(err) return console.error(err);
@@ -92,26 +119,7 @@ login(credentials, (err, api) => {
         return;
       }
 
-      // Get the price and message it back.
-      request(BASE_URL, function (error, response, body) {
-        var response = JSON.parse(body);
-        var prices = {};
-        var foundCoin = false;
-        for(var item in response) {
-          if(response[item]['symbol'].toLowerCase() === currency ||
-            response[item]['name'].toLowerCase() === currency) {
-            symbol = response[item]['symbol']
-            value = parseFloat(response[item][command]);
-            value = parseFloat(value.toFixed(2)).toLocaleString();
-            value = VALID_COMMANDS[command](value, symbol);
-            api.sendMessage(value, message.threadID);
-            foundCoin = true;
-          }
-        }
-        if(!foundCoin) {
-          api.sendMessage('Invalid command.', message.threadID);
-        }
-      });
+      sendRequest(currency, command, api, message);
     }
   });
 });
