@@ -77,12 +77,17 @@ login(credentials, (err, api) => {
       request(BASE_URL, function (error, response, body) {
         var response = JSON.parse(body);
         var prices = {};
+        var foundCoin = false;
         for(var item in response) {
           if(response[item]['symbol'].toLowerCase() === currency ||
             response[item]['name'].toLowerCase() === currency) {
             reply = response[item]['symbol'] + ': ' + response[item][command];
             api.sendMessage(reply, message.threadID);
+            foundCoin = true;
           }
+        }
+        if(!foundCoin) {
+          api.sendMessage('Invalid command.', message.threadID);
         }
       });
     }
