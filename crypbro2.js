@@ -1,8 +1,8 @@
 const login = require("facebook-chat-api");
 const request = require('request');
 
-FB_EMAIL = 'fake'
-FB_PASSWORD = 'fake'
+FB_EMAIL = 'crypbro.vitalik@gmail.com'
+FB_PASSWORD = 'Kdhomw&!LxpQgHn#@ANhzJ3R#Y^n@i7U&cAu1h1HHra'
 
 BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/'
 BOT_CALL = '@CRYPBRO '
@@ -38,7 +38,7 @@ login({email: FB_EMAIL, password: FB_PASSWORD}, (err, api) => {
                 reply += VALID_COMMANDS[cmd] + ', ';
               }
               api.sendMessage(reply, message.threadID);
-            } else if(VALID_COMMANDS.indexOf(command.toLowerCase() == -1)) {
+            } else if(VALID_COMMANDS.indexOf(command.toLowerCase()) == -1) {
               api.sendMessage('Invalid command.', message.threadID);
             } else {
                 request(BASE_URL, function (error, response, body) {
