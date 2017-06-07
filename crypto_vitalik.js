@@ -80,7 +80,7 @@ login(credentials, (err, api) => {
         for(var item in response) {
           if(response[item]['symbol'].toLowerCase() === currency ||
             response[item]['name'].toLowerCase() === currency) {
-            reply = reapose[item]['symbol'] + ': ' + response[item][command];
+            reply = response[item]['symbol'] + ': ' + response[item][command];
             api.sendMessage(reply, message.threadID);
           }
         }
