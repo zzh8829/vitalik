@@ -1,10 +1,9 @@
 require('dotenv').config()
-
 const login = require("facebook-chat-api");
 const request = require('request');
 
 BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/'
-BOT_CALL = '@CRYPBRO '
+BOT_CALL = '@crypbro '
 
 VALID_COMMANDS = [
   'id', 'name', 'symbol', 'rank', 'price_usd', 'price_btc', '24h_volume_usd',
@@ -12,51 +11,80 @@ VALID_COMMANDS = [
   'percent_change_24h', 'percent_change_7d', 'last_updated'
 ]
 
-login({email: process.env.EMAIl, password: process.env.PASSWORD}, (err, api) => {
-    if(err) return console.error(err);
+// @param message [Object] The message object sent from Facebook.
+// @return [Boolean] True if the message is directed at the bot.
+function validBotCall(message) {
+  valid = message != undefined && message.body != undefined;
+  return valid && message.body.toLowerCase().startsWith(BOT_CALL)
+}
 
-    api.listen((err, message) => {
-        console.log('Got message:');
-        console.log(message);
-        if(message != undefined && message.body != undefined &&
-           message.body.toUpperCase().startsWith(BOT_CALL)) {
-            console.log('It was directed at me!');
-            var interpret = message.body.toUpperCase();
-            interpret = interpret.replace('VITALIK ', '');
-            var cmd = interpret.replace(BOT_CALL, '').split(' ');
-            var currency = cmd[0];
-            var command = (cmd.length == 2) ? cmd[1] : 'PRICE_USD';
-            if(command === 'PRICE') {
-              command = 'PRICE_USD';
-            }
-            console.log('Interpreted as ' + currency + ' and ' + command);
+// @param message [String] The string to parse.
+// @return [Array<String> || Bool] The parsed command. Or False if invalid.
+function parseCall(message) {
+  var parsed = message.toLowerCase();
+  parsed = parsed.replace('vitalik ', '');
+  parsed = parsed.replace(BOT_CALL, '').split(' ');
 
-            if(currency == 'HELP') {
-              reply = 'Available commands: ';
-              for(var cmd in VALID_COMMANDS) {
-                reply += VALID_COMMANDS[cmd] + ', ';
-              }
-              api.sendMessage(reply, message.threadID);
-            } else if(VALID_COMMANDS.indexOf(command.toLowerCase()) == -1) {
-              api.sendMessage('Invalid command.', message.threadID);
-            } else {
-                request(BASE_URL, function (error, response, body) {
-                    console.log('Sending request...');
-                    var response = JSON.parse(body);
-                    var prices = {};
-                    for(var item in response) {
-                        if(response[item]['symbol'].toUpperCase() === currency ||
-                           response[item]['name'].toUpperCase() === currency) {
-                           console.log(response[item]);
-                           console.log(command.toLowerCase());
-                           reply = response[item][command.toLowerCase()];
-                           reply = response[item]['symbol'] + ': ' + reply
-                           console.log('Responding with ' + reply);
-                           api.sendMessage(reply, message.threadID);
-                        }
-                    }
-               });
-            }
+  // If it's just the currency, return the price
+  if(parsed.length == 1) {
+    parsed.push('price_usd');
+  }
+
+  // Make sure it's a valid command length.
+  if(parsed.length > 2) {
+    return false;
+  }
+
+  // Check if they asked for price - invalid command but we want to make it work
+  if(parsed[1] == 'price') {
+    parsed[1] = 'price_usd';
+  }
+
+  // Make sure that the command sent is valid.
+  if(VALID_COMMANDS.indexOf(parsed[1]) == -1) {
+    return false;
+  }
+
+  return parsed;
+}
+
+credentials = { email: process.env.EMAIL, password: process.env.PASSWORD }
+login(credentials, (err, api) => {
+  if(err) return console.error(err);
+
+  api.listen((err, message) => {
+    console.log('Got a message: ' + message.body);
+
+    if(validBotCall(message)) {
+      // Now we know that the message is directed at the bot.
+      var parsed = parseCall(message.body);
+      if(parsed === false) {
+        api.sendMessage('Invalid command.', message.threadID);
+        return;
+      }
+
+      currency = parsed[0];
+      command = parsed[1];
+
+      // Edge-case: the only command that has one word is help.
+      if(currency == 'help') {
+        reply = 'Available commands: ' + VALID_COMMANDS.join(', ');
+        api.sendMessage(reply, message.threadID);
+        return;
+      }
+
+      // Get the price and message it back.
+      request(BASE_URL, function (error, response, body) {
+        var response = JSON.parse(body);
+        var prices = {};
+        for(var item in response) {
+          if(response[item]['symbol'].toLowerCase() === currency ||
+            response[item]['name'].toLowerCase() === currency) {
+            reply = reapose[item]['symbol'] + ': ' + response[item][command];
+            api.sendMessage(reply, message.threadID);
+          }
         }
-    });
+      });
+    }
+  });
 });
