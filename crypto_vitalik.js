@@ -108,8 +108,8 @@ login(credentials, (err, api) => {
     console.log('Got a message: ' + message.body);
     if(validBotCall(message)) {
       // Check if the most important question was asked.
-      if(message.body == 'Why did you hard-fork?') {
-        api.sendMessage('I have so many regrets.');
+      if(message.body.toLowerCase().indexOf('why did you hard-fork?') != -1) {
+        api.sendMessage('I have so many regrets.', message.threadID);
         return;
       }
 
