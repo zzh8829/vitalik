@@ -107,13 +107,18 @@ login(credentials, (err, api) => {
   api.listen((err, message) => {
     console.log('Got a message: ' + message.body);
     if(validBotCall(message)) {
+      // Check if the most important question was asked.
+      if(message.body == 'Why did you hard-fork?') {
+        api.sendMessage('I have so many regrets.');
+        return;
+      }
+
       // Now we know that the message is directed at the bot.
       var parsed = parseCall(message.body);
       if(parsed === false) {
         api.sendMessage('Invalid command.', message.threadID);
         return;
       }
-
       currency = parsed[0];
       command = parsed[1];
 
