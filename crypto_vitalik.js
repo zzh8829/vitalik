@@ -15,9 +15,6 @@ function symbol_suffix(value, symbol) { return value + ' ' + symbol; }
 function percent_prefix(value, symbol) { return value + '%'; }
 
 VALID_COMMANDS = {
-  'id' : idempotent,
-  'name' : idempotent,
-  'symbol' : idempotent,
   'rank' : hash_prefix,
   'price_usd' : usd_prefix,
   'price_btc' : btc_suffix,
@@ -55,7 +52,9 @@ function parseCall(message) {
   if(parsed[1] == 'price') parsed[1] = 'price_usd';
 
   // Make sure that the command sent is valid.
-  if(Object.keys(VALID_COMMANDS).indexOf(parsed[1]) == -1) return false;
+  if(Object.keys(VALID_COMMANDS).indexOf(parsed[1]) == -1) {
+    if(parsed[1] != 'numbers') return false;
+  }
 
   return parsed;
 }
@@ -75,7 +74,8 @@ function matchingBlob(response_item, currency) {
 function formatOutput(symbol, value, command) {
   value = parseFloat(value);
   value = parseFloat(value.toFixed(2)).toLocaleString();
-  return VALID_COMMANDS[command](value, symbol);
+  value = VALID_COMMANDS[command](value, symbol);
+  return value;
 }
 
 // @param currency [String] The ticker symbol to look for.
@@ -87,16 +87,27 @@ var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
   ) {
   request(BASE_URL, function (error, response, body) {
     var response = JSON.parse(body);
-    var foundCoin = false;
+
     for(var item in response) {
       if(matchingBlob(response[item], currency)) {
         symbol = response[item]['symbol'];
-        value = response[item][command];
-        api.sendMessage(formatOutput(symbol, value, command), threadID);
-        foundCoin = true;
+        if(command == 'numbers') {
+          value = 'Numbers for ' + currency.toUpperCase() + ': ';
+          for(var cmd in Object.keys(VALID_COMMANDS)) {
+            cmd = Object.keys(VALID_COMMANDS)[cmd];
+            cmd_value = response[item][cmd];
+            value += '\n' + cmd + ': ' + formatOutput(symbol, cmd_value, cmd);
+          }
+          api.sendMessage(value, threadID);
+          return;
+        } else {
+          value = response[item][command];
+          api.sendMessage(formatOutput(symbol, value, command), threadID);
+          return;
+        }
       }
     }
-    if(!foundCoin) api.sendMessage('Invalid command.', threadID);
+    api.sendMessage('Invalid command.', threadID);
   });
 });
 
@@ -105,7 +116,6 @@ login(credentials, (err, api) => {
   if(err) return console.error(err);
 
   api.listen((err, message) => {
-    console.log('Got a message: ' + message.body);
     if(validBotCall(message)) {
       // Check if the most important question was asked.
       if(message.body.toLowerCase().indexOf('why did you hard-fork?') != -1) {
