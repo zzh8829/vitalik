@@ -65,7 +65,7 @@ function parseCall(message) {
 // @return [Bool] True if the currency matches the blob, false otherwise.
 function matchingBlob(response_item, currency) {
   return (response_item['symbol'].toLowerCase() === currency ||
-      response_item['name'].toLowerCase() === currency);
+          response_item['name'].toLowerCase() === currency);
 }
 
 // @param symbol [String] The ticker symbol of the desired currency.
@@ -84,7 +84,7 @@ function formatOutput(symbol, value, command) {
 // @param threadID [String] The ID of the thread to respond to.
 var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
       currency, command, api, threadID
-      ) {
+  ) {
   request(BASE_URL, function (error, response, body) {
     var response = JSON.parse(body);
     var foundCoin = false;
@@ -106,7 +106,6 @@ login(credentials, (err, api) => {
 
   api.listen((err, message) => {
     console.log('Got a message: ' + message.body);
-
     if(validBotCall(message)) {
       // Now we know that the message is directed at the bot.
       var parsed = parseCall(message.body);
