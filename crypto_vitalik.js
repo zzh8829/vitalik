@@ -87,7 +87,6 @@ var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
       ) {
   request(BASE_URL, function (error, response, body) {
     var response = JSON.parse(body);
-    var prices = {};
     var foundCoin = false;
     for(var item in response) {
       if(matchingBlob(response[item], currency)) {
