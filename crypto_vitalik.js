@@ -1,7 +1,7 @@
 require('dotenv').config()
 const login = require("facebook-chat-api");
 const request = require('request');
-var rateLimit = require('function-rate-limit');
+const rateLimit = require('function-rate-limit');
 
 BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/';
 BOT_CALL = '@crypbro ';
@@ -46,50 +46,58 @@ function parseCall(message) {
   parsed = parsed.replace(BOT_CALL, '').split(' ');
 
   // If it's just the currency, return the price
-  if(parsed.length == 1) {
-    parsed.push('price_usd');
-  }
+  if(parsed.length == 1) parsed.push('price_usd');
 
   // Make sure it's a valid command length.
-  if(parsed.length > 2) {
-    return false;
-  }
+  if(parsed.length > 2) return false;
 
   // Check if they asked for price - invalid command but we want to make it work
-  if(parsed[1] == 'price') {
-    parsed[1] = 'price_usd';
-  }
+  if(parsed[1] == 'price') parsed[1] = 'price_usd';
 
   // Make sure that the command sent is valid.
-  if(Object.keys(VALID_COMMANDS).indexOf(parsed[1]) == -1) {
-    return false;
-  }
+  if(Object.keys(VALID_COMMANDS).indexOf(parsed[1]) == -1) return false;
 
   return parsed;
 }
 
-var sendRequest = rateLimit(1, API_RATE_LIMIT, function(
-    currency, command, api, message
-  ) {
-  // Get the price and message it back.
+// @param response_item [Hash] The response item from CMC for a specific coin.
+// @param currency [String] The ticker symbol of the desired currency.
+// @return [Bool] True if the currency matches the blob, false otherwise.
+function matchingBlob(response_item, currency) {
+  return (response_item['symbol'].toLowerCase() === currency ||
+      response_item['name'].toLowerCase() === currency);
+}
+
+// @param symbol [String] The ticker symbol of the desired currency.
+// @param value [String] The value retrieved from CMC.
+// @param command [String] The command given by the user.
+// @return [String] A formatted response to send.
+function formatOutput(symbol, value, command) {
+  value = parseFloat(value);
+  value = parseFloat(value.toFixed(2)).toLocaleString();
+  return VALID_COMMANDS[command](value, symbol);
+}
+
+// @param currency [String] The ticker symbol to look for.
+// @param command [String] The command the user asked for.
+// @param api [Object] The API object from facebook-chat-api.
+// @param threadID [String] The ID of the thread to respond to.
+var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
+      currency, command, api, threadID
+      ) {
   request(BASE_URL, function (error, response, body) {
     var response = JSON.parse(body);
     var prices = {};
     var foundCoin = false;
     for(var item in response) {
-      if(response[item]['symbol'].toLowerCase() === currency ||
-          response[item]['name'].toLowerCase() === currency) {
-        symbol = response[item]['symbol']
-          value = parseFloat(response[item][command]);
-        value = parseFloat(value.toFixed(2)).toLocaleString();
-        value = VALID_COMMANDS[command](value, symbol);
-        api.sendMessage(value, message.threadID);
+      if(matchingBlob(response[item], currency)) {
+        symbol = response[item]['symbol'];
+        value = response[item][command];
+        api.sendMessage(formatOutput(symbol, value, command), threadID);
         foundCoin = true;
       }
     }
-    if(!foundCoin) {
-      api.sendMessage('Invalid command.', message.threadID);
-    }
+    if(!foundCoin) api.sendMessage('Invalid command.', threadID);
   });
 });
 
@@ -119,7 +127,7 @@ login(credentials, (err, api) => {
         return;
       }
 
-      sendRequest(currency, command, api, message);
+      respondToQuery(currency, command, api, message.threadID);
     }
   });
 });
