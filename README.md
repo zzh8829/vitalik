@@ -8,7 +8,7 @@ To run locally, set the Facebook username and password env-vars, and then run:
 
 ```
 npm install
-node crypto_vitalik.js
+node crypbro_vitalik.js
 ```
 
 ## TODO
