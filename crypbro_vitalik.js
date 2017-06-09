@@ -99,12 +99,11 @@ var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
             value += '\n' + cmd + ': ' + formatOutput(symbol, cmd_value, cmd);
           }
           api.sendMessage(value, threadID);
-          return;
         } else {
           value = response[item][command];
           api.sendMessage(formatOutput(symbol, value, command), threadID);
-          return;
         }
+        return;
       }
     }
     api.sendMessage('Invalid command.', threadID);
