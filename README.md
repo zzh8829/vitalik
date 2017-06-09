@@ -15,5 +15,4 @@ node crypto_vitalik.js
 
 Some features that would be cool:
 - Command to show top x currencies
-- Command to show all stats on a currency
 - Ability to transfer currencies between addresses
