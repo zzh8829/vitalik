@@ -1,1 +1,1 @@
-worker: node crypto_vitalik.js
+web: node crypto_vitalik.js

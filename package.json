@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "",
   "main": "crypto_vitalik.js",
-  "start": "crypto_vitalik.js",
   "dependencies": {
     "dotenv": "^4.0.0",
     "facebook-chat-api": "^1.4.0",
@@ -14,6 +13,7 @@
   },
   "devDependencies": {},
   "scripts": {
+    "start": "crypto_vitalik.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {

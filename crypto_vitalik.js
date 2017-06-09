@@ -112,6 +112,7 @@ var respondToQuery = rateLimit(1, API_RATE_LIMIT, function(
 });
 
 credentials = { email: process.env.EMAIL, password: process.env.PASSWORD }
+console.log(credentials);
 login(credentials, (err, api) => {
   if(err) return console.error(err);
 
