@@ -60,7 +60,7 @@ function parseCall(message) {
 
   // Check if they asked for an invalid command (but we want to make it work)
   if(Object.keys(MAPPINGS).indexOf(parsed[1]) != -1) {
-    parsed[1] = MAPPINGS[parsed[1]];;
+    parsed[1] = MAPPINGS[parsed[1]];
   }
 
   // Make sure that the command sent is valid.
