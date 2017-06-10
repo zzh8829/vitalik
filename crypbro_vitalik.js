@@ -14,6 +14,16 @@ function btc_suffix(value, symbol) { return value + ' BTC'; }
 function symbol_suffix(value, symbol) { return value + ' ' + symbol; }
 function percent_prefix(value, symbol) { return value + '%'; }
 
+MAPPINGS = {
+  'price' : 'price_btc',
+  'volume' : '24h_volume_usd',
+  'market_cap' : 'market_cap_usd',
+  'supply' : 'total_supply',
+  'change_1h' : 'percent_change_1h',
+  'change_24h' : 'percent_change_24h',
+  'change_7d' : 'percent_change_7d',
+}
+
 VALID_COMMANDS = {
   'rank' : hash_prefix,
   'price_usd' : usd_prefix,
@@ -48,8 +58,10 @@ function parseCall(message) {
   // Make sure it's a valid command length.
   if(parsed.length > 2) return false;
 
-  // Check if they asked for price - invalid command but we want to make it work
-  if(parsed[1] == 'price') parsed[1] = 'price_usd';
+  // Check if they asked for an invalid command (but we want to make it work)
+  if(Object.keys(MAPPINGS).indexOf(parsed[1]) != -1) {
+    parsed[1] = MAPPINGS[parsed[1]];;
+  }
 
   // Make sure that the command sent is valid.
   if(Object.keys(VALID_COMMANDS).indexOf(parsed[1]) == -1) {
