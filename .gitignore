@@ -1,3 +1,5 @@
+kubernetes.configmap.yml
+
 # Logs
 logs
 *.log

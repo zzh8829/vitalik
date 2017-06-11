@@ -17,17 +17,17 @@ spec:
         command:
         - node
         args:
-        - ./bin/www
+        - ./crypbro_vitalik.js
         env:
           - name: NODE_ENV
             value: production
           - name: PORT
             value: "27521"
-          - name: USERNAME
+          - name: EMAIL
             valueFrom:
               configMapKeyRef:
                 name: vitalik
-                key: USERNAME
+                key: EMAIL
           - name: PASSWORD
             valueFrom:
               configMapKeyRef:
