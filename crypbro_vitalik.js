@@ -4,7 +4,7 @@ const request = require('request');
 const rateLimit = require('function-rate-limit');
 
 BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/';
-BOT_CALL = '@crypbro ';
+BOT_CALL = '@Vitalik Wallet ';
 API_RATE_LIMIT = 6000;
 
 function idempotent(value, symbol) { return value; }
@@ -42,7 +42,7 @@ VALID_COMMANDS = {
 // @return [Boolean] True if the message is directed at the bot.
 function validBotCall(message) {
   valid = message != undefined && message.body != undefined;
-  return valid && message.body.toLowerCase().startsWith(BOT_CALL)
+  return valid && message.body.toLowerCase().startsWith(BOT_CALL.toLowerCase())
 }
 
 // @param message [String] The string to parse.
@@ -50,7 +50,7 @@ function validBotCall(message) {
 function parseCall(message) {
   var parsed = message.toLowerCase();
   parsed = parsed.replace('vitalik ', '');
-  parsed = parsed.replace(BOT_CALL, '').split(' ');
+  parsed = parsed.replace(BOT_CALL.toLowerCase(), '').split(' ');
 
   // If it's just the currency, return the price
   if(parsed.length == 1) parsed.push('price_usd');
@@ -90,6 +90,169 @@ function formatOutput(symbol, value, command) {
   return value;
 }
 
+database = {
+
+}
+
+function initMoney(message, api) {
+  console.log('init')
+  console.log(message)
+
+  database[message.threadID] = {}
+
+  api.getThreadInfo(message.threadID, function(err, info) {
+    ids = info.participantIDs
+    api.getUserInfo(ids, (err, ret) => {
+      if(err) return console.error(err);
+
+      for(var prop in ret) {
+        if(ret.hasOwnProperty(prop)) {
+          database[message.threadID][prop] = {
+            info: ret[prop],
+            money: {
+              ETH: 100,
+            }
+          }
+        }
+      }
+
+      console.log(database)
+      api.sendMessage('Wallet Initialized', message.threadID);
+    });
+  })
+}
+
+function sendMoney(message, api) {
+  console.log('send')
+  console.log(message)
+  const re = /^(\d+(\.\d+)?) ([A-Z]+) to @(.+)$/;
+
+  const txt = message.body.substring((BOT_CALL + 'send ').length)
+
+  const match = re.exec(txt)
+
+  if(match != null) {
+
+    const fromId = message.senderID
+    const amount = parseFloat(match[1])
+    const cur = match[3]
+    const toName = match[4]
+
+    let toId = null;
+    for(var id in database[message.threadID]) {
+      if(database[message.threadID][id]['info']['name'] === toName) {
+        toId = id;
+        break;
+      }
+    }
+
+    if(!toId) {
+      api.sendMessage('Invalid Recipient ' + toName, message.threadID);
+      return;
+    }
+
+    if(cur in database[message.threadID][fromId]['money'] &&
+       database[message.threadID][fromId]['money'][cur] >= amount) {
+
+      if(!(cur in database[message.threadID][toId]['money'])) {
+        database[message.threadID][toId]['money'][cur] = 0
+      }
+
+      database[message.threadID][fromId]['money'][cur] -= amount;
+      database[message.threadID][toId]['money'][cur] += amount;
+
+      const msg = `Success, @${database[message.threadID][fromId]['info']['name']} sent ${amount} ${cur} to @${toName}`
+
+      console.log(msg)
+      api.sendMessage(msg, message.threadID)
+    } else {
+      api.sendMessage('You got no $$', message.threadID);
+    }
+  } else {
+    api.sendMessage('Invalid Command', message.threadID);
+  }
+}
+
+function convertMoney(message, api) {
+  const re = /^(\d+(\.\d+)?) ([A-Z]+) to ([A-Z]+)$/;
+
+  const txt = message.body.substring((BOT_CALL + 'convert ').length)
+
+  const match = re.exec(txt)
+
+  if(match != null) {
+
+    const fromId = message.senderID;
+    const toId = fromId;
+    const amount = parseFloat(match[1])
+    const cur1 = match[3]
+    const cur2 = match[4]
+
+    request(BASE_URL, function (error, response, body) {
+      const data = JSON.parse(body);
+      const table = {}
+      for(var item in data) {
+        table[data[item]['symbol']] = data[item];
+      }
+
+      if(cur1 in table && cur2 in table) {
+        rate = parseFloat(table[cur1]['price_usd']) / parseFloat(table[cur2]['price_usd'])
+
+        cur2_amount = amount * rate
+        if(cur1 in database[message.threadID][fromId]['money'] &&
+           database[message.threadID][fromId]['money'][cur1] >= amount) {
+
+          if(!(cur2 in database[message.threadID][toId]['money'])) {
+            database[message.threadID][toId]['money'][cur2] = 0
+          }
+
+          database[message.threadID][fromId]['money'][cur1] -= amount;
+          database[message.threadID][toId]['money'][cur2] += cur2_amount;
+
+          const msg = `Success, @${database[message.threadID][fromId]['info']['name']} converted ${amount} ${cur1} to ${cur2_amount.toFixed(5).replace(/\.0+$/,'')} ${cur2}`
+          console.log(msg)
+          api.sendMessage(msg, message.threadID)
+        } else {
+          api.sendMessage('You got no $$', message.threadID);
+        }
+      } else {
+        api.sendMessage(`Invalid Currency Pair ${cur1} ${cur2}`, message.threadID);
+      }
+    });
+  } else {
+    api.sendMessage('Invalid Command', message.threadID);
+  }
+}
+
+function showMoney(message, api) {
+  console.log(database)
+
+  user = database[message.threadID][message.senderID]
+
+  request(BASE_URL, function (error, response, body) {
+    const data = JSON.parse(body);
+
+    money = ''
+    value = 0
+    for(var cur in user['money']) {
+      if(user['money'][cur] != 0) {
+        if(money) money += ', '
+        money += `${user['money'][cur].toFixed(5).replace(/\.0+$/,'')} ${cur}`
+
+        for(var item in data) {
+          if(data[item]['symbol'] === cur) {
+            value += user['money'][cur] * parseFloat(data[item]['price_usd'])
+          }
+        }
+      }
+    }
+
+    const msg = `@${user['info']['name']} has ${money}, networth $${value.toFixed(2).replace(/\.0+$/,'')} USD`
+
+    api.sendMessage(msg, message.threadID);
+  });
+}
+
 // @param currency [String] The ticker symbol to look for.
 // @param command [String] The command the user asked for.
 // @param api [Object] The API object from facebook-chat-api.
@@ -127,11 +290,34 @@ console.log(credentials);
 login(credentials, (err, api) => {
   if(err) return console.error(err);
 
+
+  api.setOptions({listenEvents: true})
+
   api.listen((err, message) => {
+    console.log(message);
+
     if(validBotCall(message)) {
       // Check if the most important question was asked.
       if(message.body.toLowerCase().indexOf('why did you hard-fork?') != -1) {
         api.sendMessage('I have so many regrets.', message.threadID);
+        return;
+      }
+
+      const msg = message.body.substring(BOT_CALL.length);
+      if(msg.toLowerCase() === 'init') {
+        initMoney(message, api)
+        return;
+      }
+      if(msg.toLowerCase() === 'balance') {
+        showMoney(message, api)
+        return;
+      }
+      if(msg.toLowerCase().startsWith('send ')) {
+        sendMoney(message, api)
+        return;
+      }
+      if(msg.toLowerCase().startsWith('convert ')) {
+        convertMoney(message, api)
         return;
       }
 

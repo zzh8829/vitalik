@@ -1,0 +1,85 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: vitalik
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  template:
+    metadata:
+      labels:
+        app: vitalik
+    spec:
+      containers:
+      - name: vitalik
+        image: zihao/vitalik:latest
+        imagePullPolicy: Always
+        command:
+        - node
+        args:
+        - ./bin/www
+        env:
+          - name: NODE_ENV
+            value: production
+          - name: PORT
+            value: "27521"
+          - name: USERNAME
+            valueFrom:
+              configMapKeyRef:
+                name: vitalik
+                key: USERNAME
+          - name: PASSWORD
+            valueFrom:
+              configMapKeyRef:
+                name: vitalik
+                key: PASSWORD
+        ports:
+        - containerPort: 27521
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 27521
+            scheme: HTTP
+          initialDelaySeconds: 60
+          timeoutSeconds: 10
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 512Mi
+            cpu: 50m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vitalik
+  labels:
+    app: vitalik
+spec:
+  ports:
+  - port: 80
+    targetPort: 27521
+  selector:
+    app: vitalik
+---
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: vitalik
+  annotations:
+    kubernetes.io/tls-acme: "true"
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - vitalik.kube.zihao.me
+    secretName: vitalik-tls
+  rules:
+  - host: vitalik.kube.zihao.me
+    http:
+      paths:
+      - backend:
+          serviceName: vitalik
+          servicePort: 80
+        path: /
