@@ -18,7 +18,7 @@ install:
   - yarn
 
 script:
-  - PORT=27521 node ./bin/www &
+  - PORT=27521 node crypbro_vitalik.js &
   - sleep 5
   - curl localhost:27521/
 
