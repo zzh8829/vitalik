@@ -49,7 +49,6 @@ function validBotCall(message) {
 // @return [Array<String> || Bool] The parsed command. Or False if invalid.
 function parseCall(message) {
   var parsed = message.toLowerCase();
-  parsed = parsed.replace('vitalik ', '');
   parsed = parsed.replace(BOT_CALL.toLowerCase(), '').split(' ');
 
   // If it's just the currency, return the price
