@@ -93,7 +93,7 @@ database = {
 
 }
 
-function initMoney(message, api) {
+function initMoney(message, api, cb) {
   console.log('init')
   console.log(message)
 
@@ -117,6 +117,8 @@ function initMoney(message, api) {
 
       console.log(database)
       api.sendMessage('Wallet Initialized', message.threadID);
+
+      if(cb) cb();
     });
   })
 }
@@ -226,6 +228,13 @@ function convertMoney(message, api) {
 function showMoney(message, api) {
   console.log(database)
 
+  if(!(message.threadID in database)) {
+    initMoney(message, api, function() {
+      showMoney(message, api);
+    });
+    return;
+  }
+
   user = database[message.threadID][message.senderID]
 
   request(BASE_URL, function (error, response, body) {
@@ -245,6 +254,8 @@ function showMoney(message, api) {
         }
       }
     }
+
+    if(!money) money = 'nothing';
 
     const msg = `@${user['info']['name']} has ${money}, networth $${value.toFixed(2).replace(/\.0+$/,'')} USD`
 
