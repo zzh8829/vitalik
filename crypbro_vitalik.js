@@ -4,7 +4,7 @@ const request = require('request');
 const rateLimit = require('function-rate-limit');
 
 BASE_URL = 'https://api.coinmarketcap.com/v1/ticker/';
-BOT_CALL = '@Vitalik Wallet ';
+BOT_CALL = '@Crypbro ';
 API_RATE_LIMIT = 6000;
 
 function idempotent(value, symbol) { return value; }
@@ -49,7 +49,8 @@ function validBotCall(message) {
 // @return [Array<String> || Bool] The parsed command. Or False if invalid.
 function parseCall(message) {
   var parsed = message.toLowerCase();
-  parsed = parsed.replace(BOT_CALL.toLowerCase(), '').split(' ');
+  parsed = parsed.replace(BOT_CALL.toLowerCase(), '');
+  parsed = parsed.replace('vitalik ', '').split(' ');
 
   // If it's just the currency, return the price
   if(parsed.length == 1) parsed.push('price_usd');
@@ -312,6 +313,14 @@ login(credentials, (err, api) => {
         api.sendMessage('I have so many regrets.', message.threadID);
         return;
       }
+      if(message.body.toLowerCase().indexOf('gnosis a scam') != -1) {
+        api.sendMessage("Yes. Augur for life.", message.threadID);
+        return;
+      }
+      if(message.body.toLowerCase().indexOf('hold?') != -1) {
+        api.sendMessage("*HODL", message.threadID);
+        return;
+      }
 
       const msg = message.body.substring(BOT_CALL.length);
       if(msg.toLowerCase() === 'init') {
@@ -345,6 +354,27 @@ login(credentials, (err, api) => {
         commands = Object.keys(VALID_COMMANDS).join(', ');
         reply = 'Available commands: ' + commands;
         api.sendMessage(reply, message.threadID);
+        return;
+      }
+
+      if(currency == 'flippening') {
+        var btc = 0;
+        var eth = 0;
+        var url = 'https://api.coinmarketcap.com/v1/ticker/bitcoin/'
+        request(url, function (error, response, body) {
+          var response = JSON.parse(body);
+          btc = parseFloat(response[0]['market_cap_usd']);
+          url = 'https://api.coinmarketcap.com/v1/ticker/ethereum/'
+          request(url, function (error, response, body) {
+            var response = JSON.parse(body);
+            eth = parseFloat(response[0]['market_cap_usd']);
+            value = (eth / btc);
+            value = parseFloat(value);
+            value = (100 * parseFloat(value.toFixed(2))).toLocaleString();
+            value = 'ETH market cap is ' + value + '% of the BTC market cap.';
+            api.sendMessage(value, message.threadID);
+          });
+        });
         return;
       }
 
